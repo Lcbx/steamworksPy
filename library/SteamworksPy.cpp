@@ -105,8 +105,11 @@ typedef void(*RemoteStorageUnsubscribeFileResultCallback_t)(SubscriptionResult);
 typedef void(*LeaderboardFindResultCallback_t)(LeaderboardFindResult_t);
 typedef void(*MicroTxnAuthorizationResponseCallback_t)(MicroTxnAuthorizationResponse_t);
 typedef void(*SteamUGCQueryCompletedCallback_t)(SteamUGCQueryCompleted_t);
-typedef void(*GetAppDependenciesResultCallback_t)(GetAppDependenciesResult_t);
 typedef void(*DownloadItemResultCallback_t)(DownloadItemResult_t);
+typedef void(*AddUGCDependencyResultCallback_t)(AddUGCDependencyResult_t);
+typedef void(*RemoveUGCDependencyResultCallback_t)(RemoveUGCDependencyResult_t);
+typedef void(*AddAppDependencyResultCallback_t)(AddAppDependencyResult_t);
+typedef void(*RemoveAppDependencyResultCallback_t)(RemoveAppDependencyResult_t);
 
 //-----------------------------------------------
 // Workshop Class
@@ -120,8 +123,11 @@ public:
     RemoteStorageSubscribeFileResultCallback_t _pyItemSubscribedCallback;
     RemoteStorageUnsubscribeFileResultCallback_t _pyItemUnsubscribedCallback;
     SteamUGCQueryCompletedCallback_t _pyQueryCompletedCallback;
-    GetAppDependenciesResultCallback_t _pyGetAppDependenciesCallback;
     DownloadItemResultCallback_t _pyDownloadItemCallback;
+    AddUGCDependencyResultCallback_t _pyAddDependencyCallback = nullptr;
+    RemoveUGCDependencyResultCallback_t _pyRemoveDependencyCallback = nullptr;
+    AddAppDependencyResultCallback_t _pyAddAppDependencyCallback = nullptr;
+    RemoveAppDependencyResultCallback_t _pyRemoveAppDependencyCallback = nullptr;
 
     CCallResult <Workshop, CreateItemResult_t> _itemCreatedCallback;
     CCallResult <Workshop, SubmitItemUpdateResult_t> _itemUpdatedCallback;
@@ -129,8 +135,11 @@ public:
     CCallResult <Workshop, RemoteStorageSubscribePublishedFileResult_t> _itemSubscribedCallback;
     CCallResult <Workshop, RemoteStorageUnsubscribePublishedFileResult_t> _itemUnsubscribedCallback;
     CCallResult <Workshop, SteamUGCQueryCompleted_t> _queryCompletedCallback;
-    CCallResult <Workshop, GetAppDependenciesResult_t> _getAppDependenciesCallback;
     CCallResult <Workshop, DownloadItemResult_t> _downloadItemCallback;
+    CCallResult <Workshop, AddUGCDependencyResult_t> _addDependencyCallback;
+    CCallResult <Workshop, RemoveUGCDependencyResult_t> _removeDependencyCallback;
+    CCallResult <Workshop, AddAppDependencyResult_t> _addAppDependencyCallback;
+    CCallResult <Workshop, RemoveAppDependencyResult_t> _removeAppDependencyCallback;
 
     CCallback <Workshop, ItemInstalled_t> _itemInstalledCallback;
 
@@ -207,15 +216,48 @@ public:
         _queryCompletedCallback.Set(queryRequestCall, this, &Workshop::OnQueryCompleted);
     }
 
-    void GetAppDependencies(PublishedFileId_t publishedFileID) {
-        SteamAPICall_t getAppDependenciesCall = SteamUGC()->GetAppDependencies(publishedFileID);
-        _getAppDependenciesCallback.Set(getAppDependenciesCall, this, &Workshop::OnGetAppDependencies);
-    }
-
     bool DownloadItem(PublishedFileId_t publishedFileID, bool bHighPriority) {
         SteamAPICall_t downloadItemCall = SteamUGC()->DownloadItem(publishedFileID, bHighPriority);
         _downloadItemCallback.Set(downloadItemCall, this, &Workshop::OnDownloadItem);
         return true;  // Returns true if successfully queued
+    }
+
+    void SetAddDependencyResultCallback(AddUGCDependencyResultCallback_t callback) {
+        _pyAddDependencyCallback = callback;
+    }
+
+    void SetRemoveDependencyResultCallback(RemoveUGCDependencyResultCallback_t callback) {
+        _pyRemoveDependencyCallback = callback;
+    }
+
+    void SetAddAppDependencyResultCallback(AddAppDependencyResultCallback_t callback) {
+        _pyAddAppDependencyCallback = callback;
+    }
+
+    void SetRemoveAppDependencyResultCallback(RemoveAppDependencyResultCallback_t callback) {
+        _pyRemoveAppDependencyCallback = callback;
+    }
+
+    // Workshop-to-workshop "Required Item" relationship (parent requires child).
+    void AddDependency(PublishedFileId_t parentID, PublishedFileId_t childID) {
+        SteamAPICall_t call = SteamUGC()->AddDependency(parentID, childID);
+        _addDependencyCallback.Set(call, this, &Workshop::OnAddDependency);
+    }
+
+    void RemoveDependency(PublishedFileId_t parentID, PublishedFileId_t childID) {
+        SteamAPICall_t call = SteamUGC()->RemoveDependency(parentID, childID);
+        _removeDependencyCallback.Set(call, this, &Workshop::OnRemoveDependency);
+    }
+
+    // App (game/DLC) dependency on a workshop item.
+    void AddAppDependency(PublishedFileId_t publishedFileID, AppId_t appID) {
+        SteamAPICall_t call = SteamUGC()->AddAppDependency(publishedFileID, appID);
+        _addAppDependencyCallback.Set(call, this, &Workshop::OnAddAppDependency);
+    }
+
+    void RemoveAppDependency(PublishedFileId_t publishedFileID, AppId_t appID) {
+        SteamAPICall_t call = SteamUGC()->RemoveAppDependency(publishedFileID, appID);
+        _removeAppDependencyCallback.Set(call, this, &Workshop::OnRemoveAppDependency);
     }
 
 private:
@@ -273,15 +315,33 @@ private:
         }
     }
 
-    void OnGetAppDependencies(GetAppDependenciesResult_t *result, bool bIOFailure) {
-        if (_pyGetAppDependenciesCallback != nullptr) {
-            _pyGetAppDependenciesCallback(*result);
-        }
-    }
-
     void OnDownloadItem(DownloadItemResult_t *result, bool bIOFailure) {
         if (_pyDownloadItemCallback != nullptr) {
             _pyDownloadItemCallback(*result);
+        }
+    }
+
+    void OnAddDependency(AddUGCDependencyResult_t *result, bool bIOFailure) {
+        if (_pyAddDependencyCallback != nullptr) {
+            _pyAddDependencyCallback(*result);
+        }
+    }
+
+    void OnRemoveDependency(RemoveUGCDependencyResult_t *result, bool bIOFailure) {
+        if (_pyRemoveDependencyCallback != nullptr) {
+            _pyRemoveDependencyCallback(*result);
+        }
+    }
+
+    void OnAddAppDependency(AddAppDependencyResult_t *result, bool bIOFailure) {
+        if (_pyAddAppDependencyCallback != nullptr) {
+            _pyAddAppDependencyCallback(*result);
+        }
+    }
+
+    void OnRemoveAppDependency(RemoveAppDependencyResult_t *result, bool bIOFailure) {
+        if (_pyRemoveAppDependencyCallback != nullptr) {
+            _pyRemoveAppDependencyCallback(*result);
         }
     }
 };
@@ -1594,13 +1654,6 @@ SW_PY void Workshop_SetGetAppDependenciesCallback(GetAppDependenciesResultCallba
     workshop.SetGetAppDependenciesCallback(callback);
 }
 
-SW_PY void Workshop_GetAppDependencies(PublishedFileId_t publishedFileID) {
-    if (SteamUGC() == NULL) {
-        return;
-    }
-    workshop.GetAppDependencies(publishedFileID);
-}
-
 SW_PY void Workshop_SetDownloadItemCallback(DownloadItemResultCallback_t callback) {
     if (SteamUGC() == NULL) {
         return;
@@ -1613,6 +1666,100 @@ SW_PY bool Workshop_DownloadItem(PublishedFileId_t publishedFileID, bool bHighPr
         return false;
     }
     return workshop.DownloadItem(publishedFileID, bHighPriority);
+}
+
+// --- Required Items (workshop-to-workshop dependencies) -------------------
+SW_PY void Workshop_SetAddDependencyResultCallback(AddUGCDependencyResultCallback_t callback) {
+    if (SteamUGC() == NULL) {
+        return;
+    }
+    workshop.SetAddDependencyResultCallback(callback);
+}
+
+SW_PY void Workshop_AddDependency(PublishedFileId_t parentID, PublishedFileId_t childID) {
+    if (SteamUGC() == NULL) {
+        return;
+    }
+    workshop.AddDependency(parentID, childID);
+}
+
+SW_PY void Workshop_SetRemoveDependencyResultCallback(RemoveUGCDependencyResultCallback_t callback) {
+    if (SteamUGC() == NULL) {
+        return;
+    }
+    workshop.SetRemoveDependencyResultCallback(callback);
+}
+
+SW_PY void Workshop_RemoveDependency(PublishedFileId_t parentID, PublishedFileId_t childID) {
+    if (SteamUGC() == NULL) {
+        return;
+    }
+    workshop.RemoveDependency(parentID, childID);
+}
+
+// --- App dependencies (item depends on a game/DLC) ------------------------
+SW_PY void Workshop_SetAddAppDependencyResultCallback(AddAppDependencyResultCallback_t callback) {
+    if (SteamUGC() == NULL) {
+        return;
+    }
+    workshop.SetAddAppDependencyResultCallback(callback);
+}
+
+SW_PY void Workshop_AddAppDependency(PublishedFileId_t publishedFileID, AppId_t appID) {
+    if (SteamUGC() == NULL) {
+        return;
+    }
+    workshop.AddAppDependency(publishedFileID, appID);
+}
+
+SW_PY void Workshop_SetRemoveAppDependencyResultCallback(RemoveAppDependencyResultCallback_t callback) {
+    if (SteamUGC() == NULL) {
+        return;
+    }
+    workshop.SetRemoveAppDependencyResultCallback(callback);
+}
+
+SW_PY void Workshop_RemoveAppDependency(PublishedFileId_t publishedFileID, AppId_t appID) {
+    if (SteamUGC() == NULL) {
+        return;
+    }
+    workshop.RemoveAppDependency(publishedFileID, appID);
+}
+
+// --- Synchronous item-update setters (no async callback) ------------------
+SW_PY bool Workshop_AddItemKeyValueTag(UGCUpdateHandle_t updateHandle, const char *pKey, const char *pValue) {
+    if (SteamUGC() == NULL) {
+        return false;
+    }
+    return SteamUGC()->AddItemKeyValueTag(updateHandle, pKey, pValue);
+}
+
+SW_PY bool Workshop_RemoveItemKeyValueTags(UGCUpdateHandle_t updateHandle, const char *pKey) {
+    if (SteamUGC() == NULL) {
+        return false;
+    }
+    return SteamUGC()->RemoveItemKeyValueTags(updateHandle, pKey);
+}
+
+SW_PY bool Workshop_RemoveAllItemKeyValueTags(UGCUpdateHandle_t updateHandle) {
+    if (SteamUGC() == NULL) {
+        return false;
+    }
+    return SteamUGC()->RemoveAllItemKeyValueTags(updateHandle);
+}
+
+SW_PY bool Workshop_AddContentDescriptor(UGCUpdateHandle_t updateHandle, int descid) {
+    if (SteamUGC() == NULL) {
+        return false;
+    }
+    return SteamUGC()->AddContentDescriptor(updateHandle, (EUGCContentDescriptorID) descid);
+}
+
+SW_PY bool Workshop_RemoveContentDescriptor(UGCUpdateHandle_t updateHandle, int descid) {
+    if (SteamUGC() == NULL) {
+        return false;
+    }
+    return SteamUGC()->RemoveContentDescriptor(updateHandle, (EUGCContentDescriptorID) descid);
 }
 
 //-----------------------------------------------
