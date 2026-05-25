@@ -17,6 +17,10 @@ class SteamWorkshop(object):
     _SteamUGCQueryCompleted_t = CFUNCTYPE(None, SteamUGCQueryCompleted_t)
     _GetAppDependenciesResult_t = CFUNCTYPE(None, GetAppDependenciesResult_t)
     _DownloadItemResult_t = CFUNCTYPE(None, DownloadItemResult_t)
+    _AddUGCDependencyResult_t = CFUNCTYPE(None, AddUGCDependencyResult_t)
+    _RemoveUGCDependencyResult_t = CFUNCTYPE(None, RemoveUGCDependencyResult_t)
+    _AddAppDependencyResult_t = CFUNCTYPE(None, AddAppDependencyResult_t)
+    _RemoveAppDependencyResult_t = CFUNCTYPE(None, RemoveAppDependencyResult_t)
 
     _CreateItemResult			= None
     _SubmitItemUpdateResult 	= None
@@ -27,6 +31,10 @@ class SteamWorkshop(object):
     _SteamUGCQueryCompleted = None
     _GetAppDependenciesResult = None
     _DownloadItemResult = None
+    _AddUGCDependencyResult = None
+    _RemoveUGCDependencyResult = None
+    _AddAppDependencyResult = None
+    _RemoveAppDependencyResult = None
 
 
     def __init__(self, steam: object):
@@ -535,3 +543,167 @@ class SteamWorkshop(object):
             self.steam.Workshop_SetDownloadItemCallback(self._DownloadItemResult)
 
         return self.steam.Workshop_DownloadItem(published_file_id, high_priority)
+
+
+    # ------------------------------------------------------------------
+    # Required Items (workshop-to-workshop dependencies)
+    # ------------------------------------------------------------------
+    def SetAddDependencyResultCallback(self, callback: object) -> bool:
+        """Set callback for AddDependency result (AddUGCDependencyResult_t)."""
+        self._AddUGCDependencyResult = SteamWorkshop._AddUGCDependencyResult_t(callback)
+        self.steam.Workshop_SetAddDependencyResultCallback(self._AddUGCDependencyResult)
+        return True
+
+
+    def AddDependency(self, parent_file_id: int, child_file_id: int,
+                      callback: object = None, override_callback: bool = False) -> None:
+        """Add ``child_file_id`` as a Required Item of ``parent_file_id``.
+
+        Both must be published Workshop items the calling account owns.
+        Asynchronous: the optional ``callback`` receives an
+        ``AddUGCDependencyResult_t``. If no callback is supplied the
+        call is fire-and-forget (pump ``run_callbacks`` to let it land).
+
+        :param parent_file_id: int  (the item that gains a Required Item)
+        :param child_file_id: int   (the item that becomes required)
+        :param callback: callable
+        :param override_callback: bool
+        :return: None
+        """
+        if override_callback:
+            self.SetAddDependencyResultCallback(callback)
+        elif callback and not self._AddUGCDependencyResult:
+            self.SetAddDependencyResultCallback(callback)
+
+        self.steam.Workshop_AddDependency(parent_file_id, child_file_id)
+
+
+    def SetRemoveDependencyResultCallback(self, callback: object) -> bool:
+        """Set callback for RemoveDependency result (RemoveUGCDependencyResult_t)."""
+        self._RemoveUGCDependencyResult = SteamWorkshop._RemoveUGCDependencyResult_t(callback)
+        self.steam.Workshop_SetRemoveDependencyResultCallback(self._RemoveUGCDependencyResult)
+        return True
+
+
+    def RemoveDependency(self, parent_file_id: int, child_file_id: int,
+                         callback: object = None, override_callback: bool = False) -> None:
+        """Remove the Required Item link ``child_file_id`` from ``parent_file_id``.
+
+        :param parent_file_id: int
+        :param child_file_id: int
+        :param callback: callable - receives RemoveUGCDependencyResult_t
+        :param override_callback: bool
+        :return: None
+        """
+        if override_callback:
+            self.SetRemoveDependencyResultCallback(callback)
+        elif callback and not self._RemoveUGCDependencyResult:
+            self.SetRemoveDependencyResultCallback(callback)
+
+        self.steam.Workshop_RemoveDependency(parent_file_id, child_file_id)
+
+
+    # ------------------------------------------------------------------
+    # App dependencies (item depends on a game/DLC AppID)
+    # ------------------------------------------------------------------
+    def SetAddAppDependencyResultCallback(self, callback: object) -> bool:
+        """Set callback for AddAppDependency result (AddAppDependencyResult_t)."""
+        self._AddAppDependencyResult = SteamWorkshop._AddAppDependencyResult_t(callback)
+        self.steam.Workshop_SetAddAppDependencyResultCallback(self._AddAppDependencyResult)
+        return True
+
+
+    def AddAppDependency(self, published_file_id: int, app_id: int,
+                         callback: object = None, override_callback: bool = False) -> None:
+        """Declare that workshop item ``published_file_id`` depends on ``app_id``.
+
+        :param published_file_id: int
+        :param app_id: int
+        :param callback: callable - receives AddAppDependencyResult_t
+        :param override_callback: bool
+        :return: None
+        """
+        if override_callback:
+            self.SetAddAppDependencyResultCallback(callback)
+        elif callback and not self._AddAppDependencyResult:
+            self.SetAddAppDependencyResultCallback(callback)
+
+        self.steam.Workshop_AddAppDependency(published_file_id, app_id)
+
+
+    def SetRemoveAppDependencyResultCallback(self, callback: object) -> bool:
+        """Set callback for RemoveAppDependency result (RemoveAppDependencyResult_t)."""
+        self._RemoveAppDependencyResult = SteamWorkshop._RemoveAppDependencyResult_t(callback)
+        self.steam.Workshop_SetRemoveAppDependencyResultCallback(self._RemoveAppDependencyResult)
+        return True
+
+
+    def RemoveAppDependency(self, published_file_id: int, app_id: int,
+                            callback: object = None, override_callback: bool = False) -> None:
+        """Remove the app dependency ``app_id`` from ``published_file_id``.
+
+        :param published_file_id: int
+        :param app_id: int
+        :param callback: callable - receives RemoveAppDependencyResult_t
+        :param override_callback: bool
+        :return: None
+        """
+        if override_callback:
+            self.SetRemoveAppDependencyResultCallback(callback)
+        elif callback and not self._RemoveAppDependencyResult:
+            self.SetRemoveAppDependencyResultCallback(callback)
+
+        self.steam.Workshop_RemoveAppDependency(published_file_id, app_id)
+
+
+    # ------------------------------------------------------------------
+    # Synchronous item-update setters (used between Start/SubmitItemUpdate)
+    # ------------------------------------------------------------------
+    def AddItemKeyValueTag(self, update_handle: int, key: str, value: str) -> bool:
+        """Add a key-value metadata tag to the pending item update.
+
+        :param update_handle: int
+        :param key: str
+        :param value: str
+        :return: bool
+        """
+        return self.steam.Workshop_AddItemKeyValueTag(update_handle, key.encode(), value.encode())
+
+
+    def RemoveItemKeyValueTags(self, update_handle: int, key: str) -> bool:
+        """Remove all key-value tags matching ``key`` from the pending update.
+
+        :param update_handle: int
+        :param key: str
+        :return: bool
+        """
+        return self.steam.Workshop_RemoveItemKeyValueTags(update_handle, key.encode())
+
+
+    def RemoveAllItemKeyValueTags(self, update_handle: int) -> bool:
+        """Remove every key-value tag from the pending item update.
+
+        :param update_handle: int
+        :return: bool
+        """
+        return self.steam.Workshop_RemoveAllItemKeyValueTags(update_handle)
+
+
+    def AddContentDescriptor(self, update_handle: int, descriptor_id: int) -> bool:
+        """Tag the item with a mature-content descriptor (EUGCContentDescriptorID).
+
+        :param update_handle: int
+        :param descriptor_id: int
+        :return: bool
+        """
+        return self.steam.Workshop_AddContentDescriptor(update_handle, descriptor_id)
+
+
+    def RemoveContentDescriptor(self, update_handle: int, descriptor_id: int) -> bool:
+        """Remove a previously set content descriptor from the item.
+
+        :param update_handle: int
+        :param descriptor_id: int
+        :return: bool
+        """
+        return self.steam.Workshop_RemoveContentDescriptor(update_handle, descriptor_id)

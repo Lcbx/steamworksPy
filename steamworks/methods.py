@@ -504,6 +504,58 @@ STEAMWORKS_METHODS = {
         'restype': c_bool,
         'argtypes': [c_uint64, c_bool]
     },
+    'Workshop_SetAddDependencyResultCallback': {
+        'restype': None,
+        'argtypes': [MAKE_CALLBACK(None, structs.AddUGCDependencyResult_t)]
+    },
+    'Workshop_AddDependency': {
+        'restype': None,
+        'argtypes': [c_uint64, c_uint64]
+    },
+    'Workshop_SetRemoveDependencyResultCallback': {
+        'restype': None,
+        'argtypes': [MAKE_CALLBACK(None, structs.RemoveUGCDependencyResult_t)]
+    },
+    'Workshop_RemoveDependency': {
+        'restype': None,
+        'argtypes': [c_uint64, c_uint64]
+    },
+    'Workshop_SetAddAppDependencyResultCallback': {
+        'restype': None,
+        'argtypes': [MAKE_CALLBACK(None, structs.AddAppDependencyResult_t)]
+    },
+    'Workshop_AddAppDependency': {
+        'restype': None,
+        'argtypes': [c_uint64, c_uint32]
+    },
+    'Workshop_SetRemoveAppDependencyResultCallback': {
+        'restype': None,
+        'argtypes': [MAKE_CALLBACK(None, structs.RemoveAppDependencyResult_t)]
+    },
+    'Workshop_RemoveAppDependency': {
+        'restype': None,
+        'argtypes': [c_uint64, c_uint32]
+    },
+    'Workshop_AddItemKeyValueTag': {
+        'restype': bool,
+        'argtypes': [c_uint64, c_char_p, c_char_p]
+    },
+    'Workshop_RemoveItemKeyValueTags': {
+        'restype': bool,
+        'argtypes': [c_uint64, c_char_p]
+    },
+    'Workshop_RemoveAllItemKeyValueTags': {
+        'restype': bool,
+        'argtypes': [c_uint64]
+    },
+    'Workshop_AddContentDescriptor': {
+        'restype': bool,
+        'argtypes': [c_uint64, c_int32]
+    },
+    'Workshop_RemoveContentDescriptor': {
+        'restype': bool,
+        'argtypes': [c_uint64, c_int32]
+    },
     'MicroTxn_SetAuthorizationResponseCallback': {
         'restype': None,
         'argtypes': [MAKE_CALLBACK(None, structs.MicroTxnAuthorizationResponse_t)]
